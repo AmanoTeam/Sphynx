@@ -22,10 +22,25 @@ declare -r binutils_tarball='/tmp/binutils.tar.xz'
 declare -r binutils_directory='/tmp/binutils-2.40'
 
 declare -r gcc_tarball='/tmp/gcc.tar.xz'
-declare -r gcc_directory='/tmp/gcc-12.2.0'
+declare -r gcc_directory='/tmp/gcc-12.3.0'
 
 declare -r optflags='-Os'
 declare -r linkflags='-Wl,-s'
+
+source "./submodules/obggcc/toolchains/${1}.sh"
+
+declare -ra tools=(
+	"${CC}"
+	"${CXX}"
+	"${AR}"
+	"${AS}"
+	"${LD}"
+	"${NM}"
+	"${RANLIB}"
+	"${STRIP}"
+	"${OBJCOPY}"
+	"${READELF}"
+)
 
 if ! [ -f "${gmp_tarball}" ]; then
 	wget --no-verbose 'https://mirrors.kernel.org/gnu/gmp/gmp-6.2.1.tar.xz' --output-document="${gmp_tarball}"
@@ -48,7 +63,7 @@ if ! [ -f "${binutils_tarball}" ]; then
 fi
 
 if ! [ -f "${gcc_tarball}" ]; then
-	wget --no-verbose 'https://mirrors.kernel.org/gnu/gcc/gcc-12.2.0/gcc-12.2.0.tar.xz' --output-document="${gcc_tarball}"
+	wget --no-verbose 'https://mirrors.kernel.org/gnu/gcc/gcc-12.3.0/gcc-12.3.0.tar.xz' --output-document="${gcc_tarball}"
 	tar --directory="$(dirname "${gcc_directory}")" --extract --file="${gcc_tarball}"
 fi
 
@@ -58,6 +73,7 @@ cd "${gmp_directory}/build"
 rm --force --recursive ./*
 
 ../configure \
+	--host="${CROSS_COMPILE_TRIPLET}" \
 	--prefix="${toolchain_directory}" \
 	--enable-shared \
 	--enable-static \
@@ -74,6 +90,7 @@ cd "${mpfr_directory}/build"
 rm --force --recursive ./*
 
 ../configure \
+	--host="${CROSS_COMPILE_TRIPLET}" \
 	--prefix="${toolchain_directory}" \
 	--with-gmp="${toolchain_directory}" \
 	--enable-shared \
@@ -91,6 +108,7 @@ cd "${mpc_directory}/build"
 rm --force --recursive ./*
 
 ../configure \
+	--host="${CROSS_COMPILE_TRIPLET}" \
 	--prefix="${toolchain_directory}" \
 	--with-gmp="${toolchain_directory}" \
 	--enable-shared \
@@ -103,7 +121,7 @@ make all --jobs
 make install
 
 declare -ra targets=(
-	'x86_64-linux-gnu'
+	# 'x86_64-linux-gnu'
 	'x86_64-linux-gnux32'
 	'sh4-linux-gnu'
 	'm68k-linux-gnu'
@@ -120,13 +138,13 @@ declare -ra targets=(
 	'riscv64-linux-gnu'
 	'sparc64-linux-gnu'
 	'mipsisa64r6el-linux-gnuabi64'
-	'mipsisa64r6-linux-gnuabi64'
-	'mipsisa32r6el-linux-gnu'
-	'mipsisa32r6-linux-gnu'
-	'mipsel-linux-gnu'
-	'mips64el-linux-gnuabi64'
-	'mips64-linux-gnuabi64'
-	'mips-linux-gnu'
+	# 'mipsisa64r6-linux-gnuabi64'
+	# 'mipsisa32r6el-linux-gnu'
+	# 'mipsisa32r6-linux-gnu'
+	# 'mipsel-linux-gnu'
+	# 'mips64el-linux-gnuabi64'
+	# 'mips64-linux-gnuabi64'
+	# 'mips-linux-gnu'
 )
 
 for target in "${targets[@]}"; do
@@ -180,6 +198,7 @@ for target in "${targets[@]}"; do
 	rm --force --recursive ./*
 	
 	../configure \
+		--host="${CROSS_COMPILE_TRIPLET}" \
 		--target="${triple}" \
 		--prefix="${toolchain_directory}" \
 		--enable-gold \
@@ -187,6 +206,7 @@ for target in "${targets[@]}"; do
 		--enable-lto \
 		--disable-gprofng \
 		--with-static-standard-libraries \
+		--program-prefix="${triple}-" \
 		CFLAGS="${optflags}" \
 		CXXFLAGS="${optflags}" \
 		LDFLAGS="${linkflags}"
@@ -200,6 +220,7 @@ for target in "${targets[@]}"; do
 	rm --force --recursive ./*
 	
 	../configure \
+		--host="${CROSS_COMPILE_TRIPLET}" \
 		--target="${triple}" \
 		--prefix="${toolchain_directory}" \
 		--with-linker-hash-style='gnu' \
@@ -224,24 +245,21 @@ for target in "${targets[@]}"; do
 		--enable-shared \
 		--enable-threads='posix' \
 		--enable-libssp \
-		--disable-libstdcxx-pch \
 		--disable-werror \
 		--enable-languages='c,c++' \
 		--disable-libgomp \
 		--disable-bootstrap \
 		--without-headers \
-		--enable-ld \
-		--enable-gold \
-		--with-pic \
 		--with-gcc-major-version-only \
-		--with-pkgversion="Sphynx v0.1-${revision}" \
+		--with-pkgversion="Sphynx v0.2-${revision}" \
 		--with-sysroot="${toolchain_directory}/${triple}" \
 		--with-native-system-header-dir='/include' \
 		--disable-nls \
+		--program-prefix="${triple}-" \
 		${extra_configure_flags} \
 		CFLAGS="${optflags}" \
 		CXXFLAGS="${optflags}" \
-		LDFLAGS="${linkflags}"
+		LDFLAGS="-Wl,-rpath-link,${OBGGCC_TOOLCHAIN}/${CROSS_COMPILE_TRIPLET}/lib ${linkflags}"
 	
 	LD_LIBRARY_PATH="${toolchain_directory}/lib" PATH="${PATH}:${toolchain_directory}/bin" make \
 		CFLAGS_FOR_TARGET="${optflags} ${linkflags}" \
@@ -259,9 +277,11 @@ for target in "${targets[@]}"; do
 	
 	rm --recursive "${toolchain_directory}/share"
 	
-	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/12/cc1"
-	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/12/cc1plus"
-	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/12/lto1"
+	if [ "${CROSS_COMPILE_TRIPLET/unknown-/}" == "${triple}" ]; then
+		rm "${toolchain_directory}/bin/${triple}-${triple}"*
+	fi
+	
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/13/cc1"
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/13/cc1plus"
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/13/lto1"
 done
-
-tar --directory="$(dirname "${toolchain_directory}")" --create --file=- "$(basename "${toolchain_directory}")" |  xz --threads=0 --compress -9 > "${toolchain_tarball}"

@@ -21,8 +21,8 @@ declare -r mpc_directory='/tmp/mpc-1.3.1'
 declare -r binutils_tarball='/tmp/binutils.tar.xz'
 declare -r binutils_directory='/tmp/binutils-2.40'
 
-declare -r gcc_tarball='/tmp/gcc.tar.gz'
-declare -r gcc_directory='/tmp/gcc-master'
+declare -r gcc_tarball='/tmp/gcc.tar.xz'
+declare -r gcc_directory='/tmp/gcc-12.2.0'
 
 declare -r optflags='-Os'
 declare -r linkflags='-Wl,-s'
@@ -48,7 +48,7 @@ if ! [ -f "${binutils_tarball}" ]; then
 fi
 
 if ! [ -f "${gcc_tarball}" ]; then
-	wget --no-verbose 'https://codeload.github.com/gcc-mirror/gcc/tar.gz/refs/heads/master' --output-document="${gcc_tarball}"
+	wget --no-verbose 'https://mirrors.kernel.org/gnu/gcc/gcc-12.2.0/gcc-12.2.0.tar.xz' --output-document="${gcc_tarball}"
 	tar --directory="$(dirname "${gcc_directory}")" --extract --file="${gcc_tarball}"
 fi
 
@@ -103,24 +103,24 @@ make all --jobs
 make install
 
 declare -ra targets=(
-	# 'x86_64-linux-gnu'
-	# 'x86_64-linux-gnux32'
-	# 'sh4-linux-gnu'
-	# 'm68k-linux-gnu'
-	# 'arm-linux-gnueabi'
-	# 'arm-linux-gnueabihf'
-	# 'aarch64-linux-gnu'
-	# 'i686-linux-gnu'
-	# 'powerpc-linux-gnu'
-	# 'powerpc64-linux-gnu'
-	# 'powerpc64le-linux-gnu'
-	# 's390x-linux-gnu'
-	# 'alpha-linux-gnu'
-	# 'hppa-linux-gnu'
-	# 'riscv64-linux-gnu'
-	# 'sparc64-linux-gnu'
-	# 'mipsisa64r6el-linux-gnuabi64'
-	# 'mipsisa64r6-linux-gnuabi64'
+	'x86_64-linux-gnu'
+	'x86_64-linux-gnux32'
+	'sh4-linux-gnu'
+	'm68k-linux-gnu'
+	'arm-linux-gnueabi'
+	'arm-linux-gnueabihf'
+	'aarch64-linux-gnu'
+	'i686-linux-gnu'
+	'powerpc-linux-gnu'
+	'powerpc64-linux-gnu'
+	'powerpc64le-linux-gnu'
+	's390x-linux-gnu'
+	'alpha-linux-gnu'
+	'hppa-linux-gnu'
+	'riscv64-linux-gnu'
+	'sparc64-linux-gnu'
+	'mipsisa64r6el-linux-gnuabi64'
+	'mipsisa64r6-linux-gnuabi64'
 	'mipsisa32r6el-linux-gnu'
 	'mipsisa32r6-linux-gnu'
 	'mipsel-linux-gnu'
@@ -238,7 +238,6 @@ for target in "${targets[@]}"; do
 		--with-sysroot="${toolchain_directory}/${triple}" \
 		--with-native-system-header-dir='/include' \
 		--disable-nls \
-		--disable-libstdc++ \
 		${extra_configure_flags} \
 		CFLAGS="${optflags}" \
 		CXXFLAGS="${optflags}" \
@@ -260,9 +259,9 @@ for target in "${targets[@]}"; do
 	
 	rm --recursive "${toolchain_directory}/share"
 	
-	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/"*'/cc1'
-	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/"*'/cc1plus'
-	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/"*'/lto1'
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/12/cc1"
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/12/cc1plus"
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/12/lto1"
 done
 
 tar --directory="$(dirname "${toolchain_directory}")" --create --file=- "$(basename "${toolchain_directory}")" |  xz --threads=0 --compress -9 > "${toolchain_tarball}"

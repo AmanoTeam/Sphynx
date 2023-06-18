@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags='--with-arch-32=mips32r2 --with-fp-32=xx --with-lxc1-sxc1=no'
 
-declare triple='mips-linux-gnu'
+declare triple='mips-unknown-linux-gnu'

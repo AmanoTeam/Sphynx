@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags='--with-arch=rv64imafdc --with-abi=lp64d'
 
-declare triple='riscv64-linux-gnu'
+declare triple='riscv64-unknown-linux-gnu'

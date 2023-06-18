@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags=''
 
-declare triple='alpha-linux-gnu'
+declare triple='alpha-unknown-linux-gnu'

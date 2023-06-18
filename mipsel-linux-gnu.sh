@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags='--with-arch-32=mips32r2 --with-fp-32=xx --with-madd4=no --with-lxc1-sxc1=no --disable-libsanitizer'
 
-declare triple='mipsel-linux-gnu'
+declare triple='mipsel-unknown-linux-gnu'

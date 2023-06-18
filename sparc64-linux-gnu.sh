@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags=''
 
-declare triple='sparc64-linux-gnu'
+declare triple='sparc64-unknown-linux-gnu'

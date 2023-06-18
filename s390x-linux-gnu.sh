@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags='--with-arch=z196 --with-long-double-128'
 
-declare triple='s390x-linux-gnu'
+declare triple='s390x-unknown-linux-gnu'

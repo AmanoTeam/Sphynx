@@ -21,11 +21,13 @@ declare -r mpc_directory='/tmp/mpc-1.3.1'
 declare -r binutils_tarball='/tmp/binutils.tar.xz'
 declare -r binutils_directory='/tmp/binutils-2.40'
 
-declare -r gcc_tarball='/tmp/gcc.tar.xz'
-declare -r gcc_directory='/tmp/gcc-12.2.0'
+declare -r gcc_tarball='/tmp/gcc.tar.gz'
+declare -r gcc_directory='/tmp/gcc-master'
 
 declare -r optflags='-Os'
 declare -r linkflags='-Wl,-s'
+
+source "./submodules/obggcc/toolchains/${1}.sh"
 
 if ! [ -f "${gmp_tarball}" ]; then
 	wget --no-verbose 'https://mirrors.kernel.org/gnu/gmp/gmp-6.2.1.tar.xz' --output-document="${gmp_tarball}"
@@ -48,7 +50,7 @@ if ! [ -f "${binutils_tarball}" ]; then
 fi
 
 if ! [ -f "${gcc_tarball}" ]; then
-	wget --no-verbose 'https://mirrors.kernel.org/gnu/gcc/gcc-12.2.0/gcc-12.2.0.tar.xz' --output-document="${gcc_tarball}"
+	wget --no-verbose 'https://codeload.github.com/gcc-mirror/gcc/tar.gz/refs/heads/master' --output-document="${gcc_tarball}"
 	tar --directory="$(dirname "${gcc_directory}")" --extract --file="${gcc_tarball}"
 fi
 
@@ -58,6 +60,7 @@ cd "${gmp_directory}/build"
 rm --force --recursive ./*
 
 ../configure \
+	--host="${CROSS_COMPILE_TRIPLET}" \
 	--prefix="${toolchain_directory}" \
 	--enable-shared \
 	--enable-static \
@@ -74,6 +77,7 @@ cd "${mpfr_directory}/build"
 rm --force --recursive ./*
 
 ../configure \
+	--host="${CROSS_COMPILE_TRIPLET}" \
 	--prefix="${toolchain_directory}" \
 	--with-gmp="${toolchain_directory}" \
 	--enable-shared \
@@ -91,6 +95,7 @@ cd "${mpc_directory}/build"
 rm --force --recursive ./*
 
 ../configure \
+	--host="${CROSS_COMPILE_TRIPLET}" \
 	--prefix="${toolchain_directory}" \
 	--with-gmp="${toolchain_directory}" \
 	--enable-shared \
@@ -103,18 +108,18 @@ make all --jobs
 make install
 
 declare -ra targets=(
-	'x86_64-linux-gnu'
-	'x86_64-linux-gnux32'
-	'sh4-linux-gnu'
-	'm68k-linux-gnu'
-	'arm-linux-gnueabi'
-	'arm-linux-gnueabihf'
-	'aarch64-linux-gnu'
-	'i686-linux-gnu'
-	'powerpc-linux-gnu'
-	'powerpc64-linux-gnu'
-	'powerpc64le-linux-gnu'
-	's390x-linux-gnu'
+	# 'x86_64-linux-gnu'
+	# 'x86_64-linux-gnux32'
+	# 'sh4-linux-gnu'
+	# 'm68k-linux-gnu'
+	# 'arm-linux-gnueabi'
+	# 'arm-linux-gnueabihf'
+	# 'aarch64-linux-gnu'
+	# 'i686-linux-gnu'
+	# 'powerpc-linux-gnu'
+	# 'powerpc64-linux-gnu'
+	# 'powerpc64le-linux-gnu'
+	# 's390x-linux-gnu'
 	'alpha-linux-gnu'
 	'hppa-linux-gnu'
 	'riscv64-linux-gnu'
@@ -134,9 +139,19 @@ for target in "${targets[@]}"; do
 	
 	cd "$(mktemp --directory)"
 	
+	set +e
+	
 	for package in "${packages[@]}"; do
-		wget --no-verbose "${package}"
+		while true; do
+			wget --no-verbose "${package}"
+			
+			if [ "${?}" == '0' ]; then
+				break
+			fi
+		done
 	done
+	
+	set -e
 	
 	for file in *.deb; do
 		ar x "${file}"
@@ -152,24 +167,24 @@ for target in "${targets[@]}"; do
 		rm "${filename}"
 	done
 	
-	[ -d "${toolchain_directory}/${triple}" ] || mkdir --parent "${toolchain_directory}/${triple}"
+	[ -d "${toolchain_directory}" ] || mkdir "${toolchain_directory}"
 	
-	cp --recursive "./usr/${triple}" "${toolchain_directory}"
+	mv "./usr/${target}" "${toolchain_directory}/${triple}"
 	
 	cd "${toolchain_directory}/${triple}/lib"
 	
 	if ! [ -h './libc.so' ]; then
 		if [ -d "../lib64" ]; then
-			sed --in-place "s|/usr/${triple}/lib64|../lib64|g" './libc.so'
+			sed --in-place "s|/usr/${target}/lib64|../lib64|g" './libc.so'
 		fi
-		sed --in-place "s|/usr/${triple}/lib|.|g" './libc.so'
+		sed --in-place "s|/usr/${target}/lib|.|g" './libc.so'
 	fi
 	
 	if ! [ -h './libm.so' ]; then
 		if [ -d "../lib64" ]; then
-			sed --in-place "s|/usr/${triple}/lib64|../lib64|g" './libm.so'
+			sed --in-place "s|/usr/${target}/lib64|../lib64|g" './libm.so'
 		fi
-		sed --in-place "s|/usr/${triple}/lib|.|g" './libm.so'
+		sed --in-place "s|/usr/${target}/lib|.|g" './libm.so'
 	fi
 	
 	find . -type l | xargs ls -l | grep '/lib/' | awk '{print "unlink "$9" && ln -s ./$(basename "$11") ./$(basename "$9")"}' | bash
@@ -180,6 +195,7 @@ for target in "${targets[@]}"; do
 	rm --force --recursive ./*
 	
 	../configure \
+		--host="${CROSS_COMPILE_TRIPLET}" \
 		--target="${triple}" \
 		--prefix="${toolchain_directory}" \
 		--enable-gold \
@@ -200,6 +216,7 @@ for target in "${targets[@]}"; do
 	rm --force --recursive ./*
 	
 	../configure \
+		--host="${CROSS_COMPILE_TRIPLET}" \
 		--target="${triple}" \
 		--prefix="${toolchain_directory}" \
 		--with-linker-hash-style='gnu' \
@@ -219,33 +236,34 @@ for target in "${targets[@]}"; do
 		--enable-link-serialization='1' \
 		--enable-linker-build-id \
 		--enable-lto \
-		--disable-multilib \
 		--enable-plugin \
 		--enable-shared \
 		--enable-threads='posix' \
 		--enable-libssp \
-		--disable-libstdcxx-pch \
-		--disable-werror \
 		--enable-languages='c,c++' \
 		--disable-libgomp \
 		--disable-bootstrap \
+		--disable-multilib \
+		--disable-libstdcxx-pch \
+		--disable-werror \
 		--without-headers \
 		--enable-ld \
 		--enable-gold \
-		--with-pic \
 		--with-gcc-major-version-only \
 		--with-pkgversion="Sphynx v0.1-${revision}" \
 		--with-sysroot="${toolchain_directory}/${triple}" \
 		--with-native-system-header-dir='/include' \
 		--disable-nls \
+		--disable-libsanitizer \
 		${extra_configure_flags} \
 		CFLAGS="${optflags}" \
 		CXXFLAGS="${optflags}" \
-		LDFLAGS="${linkflags}"
+		LDFLAGS="-Wl,-rpath-link,${OBGGCC_TOOLCHAIN}/${CROSS_COMPILE_TRIPLET}/lib ${linkflags}"
 	
 	LD_LIBRARY_PATH="${toolchain_directory}/lib" PATH="${PATH}:${toolchain_directory}/bin" make \
 		CFLAGS_FOR_TARGET="${optflags} ${linkflags}" \
 		CXXFLAGS_FOR_TARGET="${optflags} ${linkflags}" \
+		gcc_cv_objdump="${CROSS_COMPILE_TRIPLET}-objdump" \
 		all \
 		--jobs="$(($(nproc) * 12))"
 	make install
@@ -259,9 +277,7 @@ for target in "${targets[@]}"; do
 	
 	rm --recursive "${toolchain_directory}/share"
 	
-	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/12/cc1"
-	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/12/cc1plus"
-	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/12/lto1"
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/"*'/cc1'
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/"*'/cc1plus'
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/"*'/lto1'
 done
-
-tar --directory="$(dirname "${toolchain_directory}")" --create --file=- "$(basename "${toolchain_directory}")" |  xz --threads=0 --compress -9 > "${toolchain_tarball}"

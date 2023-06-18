@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags='--with-mips-plt --with-arch-64=mips64r2 --with-madd4=no --with-arch-32=mips32r2 --with-fp-32=xx --disable-libsanitizer'
 
-declare triple='mips64el-linux-gnuabi64'
+declare triple='mips64el-unknown-linux-gnuabi64'

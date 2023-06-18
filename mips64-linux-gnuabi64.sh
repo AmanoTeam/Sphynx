@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags='--with-mips-plt --with-arch-64=mips64r2'
 
-declare triple='mips64-linux-gnuabi64'
+declare triple='mips64-unknown-linux-gnuabi64'

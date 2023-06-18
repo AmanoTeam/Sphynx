@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags=''
 
-declare triple='x86_64-linux-gnu'
+declare triple='x86_64-unknown-linux-gnu'

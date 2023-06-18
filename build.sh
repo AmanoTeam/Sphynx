@@ -22,7 +22,7 @@ declare -r binutils_tarball='/tmp/binutils.tar.xz'
 declare -r binutils_directory='/tmp/binutils-2.40'
 
 declare -r gcc_tarball='/tmp/gcc.tar.xz'
-declare -r gcc_directory='/tmp/gcc-11.4.0'
+declare -r gcc_directory='/tmp/gcc-12.3.0'
 
 declare -r optflags='-Os'
 declare -r linkflags='-Wl,-s'
@@ -63,7 +63,7 @@ if ! [ -f "${binutils_tarball}" ]; then
 fi
 
 if ! [ -f "${gcc_tarball}" ]; then
-	wget --no-verbose 'https://mirrors.kernel.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.xz' --output-document="${gcc_tarball}"
+	wget --no-verbose 'https://mirrors.kernel.org/gnu/gcc/gcc-12.3.0/gcc-12.3.0.tar.xz' --output-document="${gcc_tarball}"
 	tar --directory="$(dirname "${gcc_directory}")" --extract --file="${gcc_tarball}"
 fi
 
@@ -121,7 +121,7 @@ make all --jobs
 make install
 
 declare -ra targets=(
-	'x86_64-linux-gnu'
+	# 'x86_64-linux-gnu'
 	'x86_64-linux-gnux32'
 	'sh4-linux-gnu'
 	'm68k-linux-gnu'
@@ -281,7 +281,7 @@ for target in "${targets[@]}"; do
 		rm "${toolchain_directory}/bin/${triple}-${triple}"*
 	fi
 	
-	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/"*'/cc1'
-	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/"*'/cc1plus'
-	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/"*'/lto1'
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/13/cc1"
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/13/cc1plus"
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/13/lto1"
 done

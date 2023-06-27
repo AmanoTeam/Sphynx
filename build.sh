@@ -203,6 +203,7 @@ for target in "${targets[@]}"; do
 		--enable-lto \
 		--disable-gprofng \
 		--with-static-standard-libraries \
+		--program-prefix="${triple}-" \
 		CFLAGS="${optflags}" \
 		CXXFLAGS="${optflags}" \
 		LDFLAGS="${linkflags}"
@@ -250,11 +251,12 @@ for target in "${targets[@]}"; do
 		--enable-ld \
 		--enable-gold \
 		--with-gcc-major-version-only \
-		--with-pkgversion="Sphynx v0.1-${revision}" \
+		--with-pkgversion="Sphynx v0.2-${revision}" \
 		--with-sysroot="${toolchain_directory}/${triple}" \
 		--with-native-system-header-dir='/include' \
 		--disable-nls \
 		--disable-libsanitizer \
+		--program-prefix="${triple}-" \
 		${extra_configure_flags} \
 		CFLAGS="${optflags}" \
 		CXXFLAGS="${optflags}" \
@@ -276,6 +278,10 @@ for target in "${targets[@]}"; do
 	done
 	
 	rm --recursive "${toolchain_directory}/share"
+	
+	if [ "${CROSS_COMPILE_TRIPLET}" == "${triple}" ]; then
+		rm "${toolchain_directory}/bin/${triple}-${triple}"*
+	fi
 	
 	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/"*'/cc1'
 	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/"*'/cc1plus'

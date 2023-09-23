@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags=''
 
-declare triple='powerpc-unknown-linux-gnu'
+declare triplet='powerpc-unknown-linux-gnu'

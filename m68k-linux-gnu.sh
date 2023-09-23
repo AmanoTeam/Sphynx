@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags=''
 
-declare triple='m68k-unknown-linux-gnu'
+declare triplet='m68k-unknown-linux-gnu'

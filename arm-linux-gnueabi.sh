@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags='--with-arch=armv5te --with-float=soft'
 
-declare triple='arm-unknown-linux-gnueabi'
+declare triplet='arm-unknown-linux-gnueabi'

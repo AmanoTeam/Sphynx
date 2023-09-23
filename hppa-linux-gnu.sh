@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags=''
 
-declare triple='hppa-unknown-linux-gnu'
+declare triplet='hppa-unknown-linux-gnu'

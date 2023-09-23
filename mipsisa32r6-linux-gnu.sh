@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags='--with-arch-32=mips32r6 --with-tune-32=mips32r6 --with-arch-64=mips64r6 --with-tune-64=mips64r6'
 
-declare triple='mipsisa32r6-unknown-linux-gnu'
+declare triplet='mipsisa32r6-unknown-linux-gnu'

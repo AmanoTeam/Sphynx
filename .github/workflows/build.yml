@@ -6,8 +6,55 @@ on:
         - '**'
 
 jobs:
-  build:
+  native-build:
+    name: 'Native build'
     runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@main
+      with:
+        submodules: true
+    - name: Check for cache
+      id: check-cache
+      uses: actions/cache@main
+      with:
+        key: gcc-13.2.0
+        lookup-only: true
+        path: |
+          /tmp/x86_64-linux-gnu.tar.xz
+          /tmp/x86_64-linux-gnu.tar.xz.sha256
+    - name: Build Sphynx
+      if: ${{ steps.check-cache.outputs.cache-hit != 'true' }}
+      run: |
+        bash './build.sh' 'native'
+    - name: Generate tarball
+      if: ${{ steps.check-cache.outputs.cache-hit != 'true' }}
+      run: |
+        declare tarball_filename='/tmp/x86_64-linux-gnu.tar.xz'
+        tar --directory='/tmp' --create --file=- 'sphynx' | xz --threads='0' --compress -9 > "${tarball_filename}"
+        sha256sum "${tarball_filename}" | sed 's|/tmp/||' > "${tarball_filename}.sha256"
+    - name: Upload artifact
+      if: ${{ steps.check-cache.outputs.cache-hit != 'true' }}
+      uses: actions/upload-artifact@main
+      with:
+        name: native-toolchain
+        if-no-files-found: error
+        path: |
+          /tmp/x86_64-linux-gnu.tar.xz
+          /tmp/x86_64-linux-gnu.tar.xz.sha256
+    - name: Cache artifact
+      if: ${{ steps.check-cache.outputs.cache-hit != 'true' }}
+      uses: actions/cache@main
+      with:
+        key: gcc-13.2.0
+        path: |
+          /tmp/x86_64-linux-gnu.tar.xz
+          /tmp/x86_64-linux-gnu.tar.xz.sha256
+  
+  cross-build:
+    name: 'Cross build'
+    needs: native-build
+    runs-on: ubuntu-latest
+    continue-on-error: true
     strategy:
       matrix:
         target: [
@@ -30,6 +77,18 @@ jobs:
     - uses: actions/checkout@main
       with:
         submodules: true
+    - name: Restore from cache
+      uses: actions/cache@main
+      with:
+        key: gcc-13.2.0
+        fail-on-cache-miss: true
+        path: |
+          /tmp/x86_64-linux-gnu.tar.xz
+          /tmp/x86_64-linux-gnu.tar.xz.sha256
+    - name: Setup toolchain
+      run: |
+        tar --directory='/tmp' --extract --file='/tmp/x86_64-linux-gnu.tar.xz'
+        mv '/tmp/sphynx' '/tmp/sphynx-toolchain'
     - name: Build Sphynx with OBGGCC
       run: |
         source './submodules/obggcc/tools/setup_toolchain.sh'

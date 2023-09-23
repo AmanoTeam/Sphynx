@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags=''
 
-declare triple='sh4-unknown-linux-gnu'
+declare triplet='sh4-unknown-linux-gnu'

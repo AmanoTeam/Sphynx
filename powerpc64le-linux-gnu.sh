@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags='--enable-secureplt --with-cpu=power8 --with-long-double-128'
 
-declare triple='powerpc64le-unknown-linux-gnu'
+declare triplet='powerpc64le-unknown-linux-gnu'

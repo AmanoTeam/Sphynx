@@ -7,7 +7,6 @@ declare -r revision="$(git rev-parse --short HEAD)"
 declare -r current_source_directory="${PWD}"
 
 declare -r toolchain_directory='/tmp/sphynx'
-declare -r toolchain_tarball="${current_source_directory}/linux-cross.tar.xz"
 
 declare -r gmp_tarball='/tmp/gmp.tar.xz'
 declare -r gmp_directory='/tmp/gmp-6.2.1'
@@ -19,15 +18,35 @@ declare -r mpc_tarball='/tmp/mpc.tar.gz'
 declare -r mpc_directory='/tmp/mpc-1.3.1'
 
 declare -r binutils_tarball='/tmp/binutils.tar.xz'
-declare -r binutils_directory='/tmp/binutils-2.40'
+declare -r binutils_directory='/tmp/binutils-2.41'
 
 declare -r gcc_tarball='/tmp/gcc.tar.gz'
-declare -r gcc_directory='/tmp/gcc-master'
+declare -r gcc_directory='/tmp/gcc-13.2.0'
 
 declare -r optflags='-Os'
 declare -r linkflags='-Wl,-s'
 
-source "./submodules/obggcc/toolchains/${1}.sh"
+declare build_type="${1}"
+
+if [ -z "${build_type}" ]; then
+	build_type='native'
+fi
+
+declare is_native='0'
+
+if [ "${build_type}" == 'native' ]; then
+	is_native='1'
+fi
+
+declare OBGGCC_TOOLCHAIN='/tmp/obggcc-toolchain'
+declare CROSS_COMPILE_TRIPLET=''
+
+declare cross_compile_flags=''
+
+if ! (( is_native )); then
+	source "./submodules/obggcc/toolchains/${build_type}.sh"
+	cross_compile_flags+="--host=${CROSS_COMPILE_TRIPLET}"
+fi
 
 if ! [ -f "${gmp_tarball}" ]; then
 	wget --no-verbose 'https://mirrors.kernel.org/gnu/gmp/gmp-6.2.1.tar.xz' --output-document="${gmp_tarball}"
@@ -45,12 +64,12 @@ if ! [ -f "${mpc_tarball}" ]; then
 fi
 
 if ! [ -f "${binutils_tarball}" ]; then
-	wget --no-verbose 'https://mirrors.kernel.org/gnu/binutils/binutils-2.40.tar.xz' --output-document="${binutils_tarball}"
+	wget --no-verbose 'https://mirrors.kernel.org/gnu/binutils/binutils-2.41.tar.xz' --output-document="${binutils_tarball}"
 	tar --directory="$(dirname "${binutils_directory}")" --extract --file="${binutils_tarball}"
 fi
 
 if ! [ -f "${gcc_tarball}" ]; then
-	wget --no-verbose 'https://codeload.github.com/gcc-mirror/gcc/tar.gz/refs/heads/master' --output-document="${gcc_tarball}"
+	wget --no-verbose 'https://mirrors.kernel.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz' --output-document="${gcc_tarball}"
 	tar --directory="$(dirname "${gcc_directory}")" --extract --file="${gcc_tarball}"
 fi
 
@@ -60,10 +79,10 @@ cd "${gmp_directory}/build"
 rm --force --recursive ./*
 
 ../configure \
-	--host="${CROSS_COMPILE_TRIPLET}" \
 	--prefix="${toolchain_directory}" \
 	--enable-shared \
 	--enable-static \
+	${cross_compile_flags} \
 	CFLAGS="${optflags}" \
 	CXXFLAGS="${optflags}" \
 	LDFLAGS="${linkflags}"
@@ -77,11 +96,11 @@ cd "${mpfr_directory}/build"
 rm --force --recursive ./*
 
 ../configure \
-	--host="${CROSS_COMPILE_TRIPLET}" \
 	--prefix="${toolchain_directory}" \
 	--with-gmp="${toolchain_directory}" \
 	--enable-shared \
 	--enable-static \
+	${cross_compile_flags} \
 	CFLAGS="${optflags}" \
 	CXXFLAGS="${optflags}" \
 	LDFLAGS="${linkflags}"
@@ -95,11 +114,11 @@ cd "${mpc_directory}/build"
 rm --force --recursive ./*
 
 ../configure \
-	--host="${CROSS_COMPILE_TRIPLET}" \
 	--prefix="${toolchain_directory}" \
 	--with-gmp="${toolchain_directory}" \
 	--enable-shared \
 	--enable-static \
+	${cross_compile_flags} \
 	CFLAGS="${optflags}" \
 	CXXFLAGS="${optflags}" \
 	LDFLAGS="${linkflags}"
@@ -169,9 +188,9 @@ for target in "${targets[@]}"; do
 	
 	[ -d "${toolchain_directory}" ] || mkdir "${toolchain_directory}"
 	
-	mv "./usr/${target}" "${toolchain_directory}/${triple}"
+	mv "./usr/${target}" "${toolchain_directory}/${triplet}"
 	
-	cd "${toolchain_directory}/${triple}/lib"
+	cd "${toolchain_directory}/${triplet}/lib"
 	
 	if ! [ -h './libc.so' ]; then
 		if [ -d "../lib64" ]; then
@@ -195,15 +214,16 @@ for target in "${targets[@]}"; do
 	rm --force --recursive ./*
 	
 	../configure \
-		--host="${CROSS_COMPILE_TRIPLET}" \
-		--target="${triple}" \
+		--target="${triplet}" \
 		--prefix="${toolchain_directory}" \
 		--enable-gold \
 		--enable-ld \
 		--enable-lto \
 		--disable-gprofng \
 		--with-static-standard-libraries \
-		--program-prefix="${triple}-" \
+		--program-prefix="${triplet}-" \
+		--with-sysroot="${toolchain_directory}/${triplet}" \
+		${cross_compile_flags} \
 		CFLAGS="${optflags}" \
 		CXXFLAGS="${optflags}" \
 		LDFLAGS="${linkflags}"
@@ -217,8 +237,7 @@ for target in "${targets[@]}"; do
 	rm --force --recursive ./*
 	
 	../configure \
-		--host="${CROSS_COMPILE_TRIPLET}" \
-		--target="${triple}" \
+		--target="${triplet}" \
 		--prefix="${toolchain_directory}" \
 		--with-linker-hash-style='gnu' \
 		--with-gmp="${toolchain_directory}" \
@@ -251,12 +270,13 @@ for target in "${targets[@]}"; do
 		--enable-ld \
 		--enable-gold \
 		--with-gcc-major-version-only \
-		--with-pkgversion="Sphynx v0.2-${revision}" \
-		--with-sysroot="${toolchain_directory}/${triple}" \
+		--with-pkgversion="Sphynx v0.3-${revision}" \
+		--with-sysroot="${toolchain_directory}/${triplet}" \
 		--with-native-system-header-dir='/include' \
 		--disable-nls \
 		--disable-libsanitizer \
-		--program-prefix="${triple}-" \
+		--program-prefix="${triplet}-" \
+		${cross_compile_flags} \
 		${extra_configure_flags} \
 		CFLAGS="${optflags}" \
 		CXXFLAGS="${optflags}" \
@@ -270,20 +290,20 @@ for target in "${targets[@]}"; do
 		--jobs="$(($(nproc) * 12))"
 	make install
 	
-	cd "${toolchain_directory}/${triple}/bin"
+	cd "${toolchain_directory}/${triplet}/bin"
 	
 	for name in *; do
 		rm "${name}"
-		ln -s "../../bin/${triple}-${name}" "${name}"
+		ln -s "../../bin/${triplet}-${name}" "${name}"
 	done
 	
 	rm --recursive "${toolchain_directory}/share"
 	
-	if [ "${CROSS_COMPILE_TRIPLET}" == "${triple}" ]; then
-		rm "${toolchain_directory}/bin/${triple}-${triple}"*
+	if [ "${CROSS_COMPILE_TRIPLET}" == "${triplet}" ]; then
+		rm "${toolchain_directory}/bin/${triplet}-${triplet}"*
 	fi
 	
-	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/"*'/cc1'
-	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/"*'/cc1plus'
-	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/"*'/lto1'
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triplet}/"*'/cc1'
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triplet}/"*'/cc1plus'
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triplet}/"*'/lto1'
 done

@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags='--with-abi=mx32'
 
-declare triple='x86_64-unknown-linux-gnux32'
+declare triplet='x86_64-unknown-linux-gnux32'

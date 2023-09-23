@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags='--with-arch-32=i686 --with-tune=generic'
 
-declare triple='i686-unknown-linux-gnu'
+declare triplet='i686-unknown-linux-gnu'

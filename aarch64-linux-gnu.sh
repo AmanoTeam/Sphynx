@@ -8,4 +8,4 @@ declare packages=(
 
 declare extra_configure_flags='--enable-fix-cortex-a53-843419'
 
-declare triple='aarch64-unknown-linux-gnu'
+declare triplet='aarch64-unknown-linux-gnu'

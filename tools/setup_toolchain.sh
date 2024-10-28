@@ -2,7 +2,7 @@
 
 set -eu
 
-declare -r SPHYNX_TOOLCHAIN='/tmp/sphynx-toolchain'
+SPHYNX_TOOLCHAIN='/tmp/sphynx-toolchain'
 
 if [ -d "${SPHYNX_TOOLCHAIN}" ]; then
 	PATH+=":${SPHYNX_TOOLCHAIN}/bin"
